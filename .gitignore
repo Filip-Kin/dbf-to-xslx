@@ -1,0 +1,12 @@
+temp/*
+databases/*
+.vscode/*
+node_modules/*
+package-lock.json
+csvtoxlsx/target/*
+csvtoxlsx/.idea/*
+csvtoxlsx/.settings/*
+.settings/*
+.classpath
+.project
+*.jar
