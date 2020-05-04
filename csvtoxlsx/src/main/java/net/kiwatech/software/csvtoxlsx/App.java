@@ -1,6 +1,5 @@
 package net.kiwatech.software.csvtoxlsx;
 
-import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.AreaReference;
@@ -20,29 +19,10 @@ public class App {
         Workbook wb = new XSSFWorkbook();
         XSSFSheet sheet = (XSSFSheet) wb.createSheet(createSafeSheetName("Data"));
 
-        if (readCSV(args[0], sheet) == 0) {
+        if (readCSV(args[0], sheet, wb) == 0) {
             System.out.println("Done! No data");
             return; // If theres only a header row then don't do anything
         }
-
-        int firstRow = sheet.getFirstRowNum();
-        int lastRow = sheet.getLastRowNum();
-        int firstCol = sheet.getRow(0).getFirstCellNum();
-        int lastCol = sheet.getRow(0).getLastCellNum();
-
-        CellReference topLeft = new CellReference(firstRow, firstCol);
-        CellReference botRight = new CellReference(lastRow, lastCol - 1);
-        AreaReference aref = wb.getCreationHelper().createAreaReference(topLeft, botRight);
-        XSSFTable table = sheet.createTable(aref);
-
-        // Repair the table
-        for (int i = 0; i < table.getCTTable().getTableColumns().getCount(); i++) {
-            table.getCTTable().getTableColumns().getTableColumnArray(i).setId(i+1);
-        }
-        table.setName("table");
-        table.setDisplayName("Table");
-        table.getCTTable().addNewTableStyleInfo();
-        table.getCTTable().getTableStyleInfo().setName("TableStyleMedium2");
 
         FileOutputStream fileOut = new FileOutputStream(args[1]);
         wb.write(fileOut);
@@ -50,7 +30,7 @@ public class App {
         System.out.println("Done!");
     }
 
-    public static int readCSV(String file, XSSFSheet sheet) throws IOException {
+    public static int readCSV(String file, XSSFSheet sheet, Workbook wb) throws IOException {
         int rowNum = 0;
         List<String> colNames = null;
         try (InputStream in = new FileInputStream(file);) {
@@ -64,11 +44,30 @@ public class App {
                 }
             }
 
-            boolean firstRow = true;
+            int firstRow = sheet.getFirstRowNum();
+            int lastRow = sheet.getLastRowNum();
+            int firstCol = sheet.getRow(0).getFirstCellNum();
+            int lastCol = sheet.getRow(0).getLastCellNum();
+
+            CellReference topLeft = new CellReference(firstRow, firstCol);
+            CellReference botRight = new CellReference(lastRow + 1, lastCol - 1);
+            AreaReference aref = wb.getCreationHelper().createAreaReference(topLeft, botRight);
+            XSSFTable table = sheet.createTable(aref);
+
+            // Repair the table
+            for (int i = 0; i < table.getCTTable().getTableColumns().getCount(); i++) {
+                table.getCTTable().getTableColumns().getTableColumnArray(i).setId(i+1);
+            }
+            table.setName("table");
+            table.setDisplayName("Table");
+            table.getCTTable().addNewTableStyleInfo();
+            table.getCTTable().getTableStyleInfo().setName("TableStyleMedium2");
+
+            boolean firstDataRow = true;
             while (csv.hasNext()) {
                 List<String> fields = csv.next();
-                if (firstRow) {
-                    firstRow = false;
+                if (firstDataRow) {
+                    firstDataRow = false;
                     continue; // Skip the first line cause it's always blank (assuming this is from the script i wrote)
                 }
                 rowNum++;
