@@ -1,18 +1,18 @@
+/*
+ DBF to CSV
+ @author Filip Kin
+ @version 1.1
+*/
 const Parser = require('@filip96/node-dbf');
 const createCsvStringifier = require('csv-writer').createObjectCsvStringifier;
-const { readdirSync: readdir, createWriteStream, existsSync, mkdirSync } = require('fs');
+const { readdirSync: readdir, createWriteStream } = require('fs');
 const { join: pathJoin } = require('path');
-const { exec } = require('child_process');
 const cliProgress = require('cli-progress')
 const config = require('./config.js');
 
 const bar = new cliProgress.SingleBar({
     format: '{bar} | {percentage}% {stage} {file}'
 }, cliProgress.Presets.shades_classic);
-
-if (!existsSync('./temp')){
-    mkdirSync('./temp');
-}
 
 bar.start(1, 0, {
     stage: 'Reading directory',
@@ -23,7 +23,7 @@ let filesToParse = [];
 for (let dir of config.folderPaths) {
     let files = readdir(dir);
     for (let file of files) {
-        if (file.toLowerCase().endsWith(config.fileExtension)) {
+        if (file.toLowerCase().endsWith(config.fileExtension.toLowerCase())) {
             let noMatches = true;
             for (let regex of config.ignoreFiles) {
                 if (file.match(regex)) {
@@ -50,7 +50,7 @@ async function processFiles() {
 
             let rows, writer, headers = [];
             let parser = new Parser(file);
-            let writeStream = createWriteStream(pathJoin('./temp/', fileName + '.csv'));
+            let writeStream = createWriteStream(pathJoin(config.exportPath, fileName + '.csv'));
 
             parser.on('header', (h) => {
                 rows = h.numberOfRecords;
@@ -78,19 +78,15 @@ async function processFiles() {
 
             parser.on('end', () => {
                 writeStream.close();
-                bar.update({stage: 'Converting'});
-                exec('java -jar csvtoxlsx-jar-with-dependencies.jar "./temp/'+fileName+'.csv" "'+config.exportPath+'/'+fileName+'.xlsx"', (err, out) => {
-                    if (err) console.error('\n'+err);
-                    if (!out.match('Done!')) console.error('\n'+out);
-                    resolve()
-                });
-                
+                bar.update({stage: 'Done'});
+                resolve();
             });
 
             parser.parse();
         });
     }
     bar.stop();
+    console.log('File stream is still writing, please wait until process has exited');
 }
 
 processFiles();
