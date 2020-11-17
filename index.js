@@ -43,7 +43,7 @@ async function processFiles() {
         await new Promise((resolve, reject) => {
             let fileName = file.split('\\');
             fileName = fileName[fileName.length - 1].replace(config.fileExtension, '').replace(config.fileExtension.toUpperCase(), '');
-            bar.increment(1, {
+            bar.update({
                 stage: 'Reading',
                 file: fileName
             });
@@ -51,7 +51,6 @@ async function processFiles() {
             let rows, writer, headers = [];
             let parser = new Parser(file);
             let writeStream = createWriteStream(pathJoin(config.exportPath, fileName + '.csv'));
-
             parser.on('header', (h) => {
                 rows = h.numberOfRecords;
                 for (let col of h.fields) {
@@ -77,16 +76,19 @@ async function processFiles() {
             });
 
             parser.on('end', () => {
-                writeStream.close();
-                bar.update({stage: 'Done'});
-                resolve();
+                writeStream.end();
+                bar.update({stage: 'Writing'});
+            });
+
+            writeStream.on('close', () => {
+                bar.increment(1, {stage: 'Done'});
+                resolve()
             });
 
             parser.parse();
         });
     }
     bar.stop();
-    console.log('File stream is still writing, please wait until process has exited');
 }
 
 processFiles();
